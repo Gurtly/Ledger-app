@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ledger — Savings Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#161F1B">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --paper: #161F1B;
+  --paper-line: #2B3731;
+  --ink: #E9E2CE;
+  --ink-soft: #99A69C;
+  --brass: #D9A64C;
+  --brass-deep: #EFBE64;
+  --sage: #82B588;
+  --brick: #D97862;
+  --charcoal: #ECE6D6;
+  --card: #1E2822;
+  --shadow: rgba(0,0,0,0.35);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--charcoal);
+  font-family: 'Inter', sans-serif;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px);
+  min-height: 100vh;
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+}
+
+/* HEADER */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 14px;
+  margin-bottom: 22px;
+}
+.masthead h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: 0.2px;
+}
+.masthead .sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+}
+.settings-btn {
+  background: none;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 7px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background .15s, color .15s;
+}
+.settings-btn:hover { background: var(--ink); color: var(--paper); }
+.masthead-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* TOP PANEL: stamp + numbers */
+.panel {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 22px;
+  margin-bottom: 26px;
+  align-items: center;
+}
+@media (max-width: 520px) {
+  .panel { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+}
+
+.stamp-holder { display:flex; justify-content:center; }
+.stamp {
+  width: 140px; height: 140px;
+  transform: rotate(-6deg);
+}
+.stamp .ring-outer { fill: none; stroke: var(--brass-deep); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.stamp .ring-track { fill: none; stroke: var(--ink); opacity: 0.12; stroke-width: 7; }
+.stamp .ring-progress { fill: none; stroke: var(--sage); stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+.stamp .pct { font-family: 'Fraunces', serif; font-weight: 600; fill: var(--ink); }
+.stamp .lbl { font-family: 'IBM Plex Mono', monospace; fill: var(--ink-soft); letter-spacing: 1px; }
+
+.figures { display: flex; flex-direction: column; gap: 10px; }
+.goal-line { font-family: 'Fraunces', serif; font-size: 17px; color: var(--ink); }
+.goal-line b { color: var(--brass-deep); }
+.stat-row { display: flex; gap: 22px; flex-wrap: wrap; }
+.stat {
+  font-family: 'IBM Plex Mono', monospace;
+}
+.stat .num { font-size: 22px; font-weight: 600; display:block; }
+.stat .cap { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); }
+.stat.pos .num { color: var(--sage); }
+.stat.neg .num { color: var(--brick); }
+.stat.bal .num { color: var(--ink); }
+
+/* ADD ENTRY */
+.entry-card {
+  background: var(--card);
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  padding: 18px;
+  box-shadow: 0 1px 3px var(--shadow);
+  margin-bottom: 26px;
+}
+.type-toggle {
+  display: inline-flex;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.type-toggle button {
+  border: none;
+  background: transparent;
+  padding: 8px 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+.type-toggle button.active.income { background: var(--sage); color: #fff; }
+.type-toggle button.active.expense { background: var(--brick); color: #fff; }
+.type-toggle button.active.pace { background: var(--brass); color: var(--paper); }
+
+.recur-row { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-soft); margin-bottom: 12px; cursor: pointer; }
+.recur-row input { accent-color: var(--brass); width: 15px; height: 15px; cursor: pointer; }
+
+.pace-panel { display: flex; flex-direction: column; gap: 14px; }
+.pace-grid { display: flex; gap: 26px; flex-wrap: wrap; }
+.pace-stat { font-family: 'IBM Plex Mono', monospace; }
+.pace-stat .num { font-size: 22px; font-weight: 600; display: block; color: var(--ink); }
+.pace-stat .cap { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); }
+.pace-status { padding: 13px 15px; border-radius: 6px; font-size: 13px; line-height: 1.55; }
+.pace-status.good { background: rgba(130,181,136,0.14); color: var(--sage); border: 1px solid rgba(130,181,136,0.3); }
+.pace-status.bad { background: rgba(217,120,98,0.14); color: var(--brick); border: 1px solid rgba(217,120,98,0.3); }
+.pace-note { font-size: 12px; color: var(--ink-soft); }
+.link-btn { background: none; border: none; color: var(--brass-deep); text-decoration: underline; cursor: pointer; font-size: inherit; padding: 0; font-family: inherit; }
+
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.field { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-soft); }
+.field input, .field select {
+  font-family: 'Inter', sans-serif;
+  border: 1px solid var(--paper-line);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 9px 10px;
+  font-size: 14px;
+  color: var(--charcoal);
+}
+.field input:focus, .field select:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+.add-btn {
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: var(--ink);
+  color: var(--paper);
+  transition: opacity .15s;
+}
+.add-btn:hover { opacity: 0.85; }
+
+/* OTHER ACCOUNTS */
+.accounts-card {
+  background: var(--card);
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  padding: 18px;
+  box-shadow: 0 1px 3px var(--shadow);
+  margin-bottom: 26px;
+}
+.accounts-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  margin: 0 0 2px;
+  color: var(--ink);
+}
+.accounts-sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.chip {
+  border: 1px dashed var(--ink-soft);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  padding: 6px 11px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.chip:hover { border-color: var(--brass); color: var(--brass-deep); }
+.acct-list { margin-top: 10px; }
+.acct-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 150px 26px;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dotted var(--paper-line);
+}
+@media (max-width: 560px) {
+  .acct-row { grid-template-columns: 1fr; gap: 8px; padding: 14px 0; }
+}
+.acct-name { font-size: 13px; color: var(--charcoal); }
+.acct-balance {
+  display: flex; align-items: center; gap: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.acct-balance input {
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: 4px;
+  color: var(--charcoal);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+.acct-balance input:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+.acct-check {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+.acct-check input { accent-color: var(--sage); width: 15px; height: 15px; cursor: pointer; }
+.acct-empty { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+.modal .acct-row { grid-template-columns: 1fr; gap: 8px; padding: 14px 0; }
+
+/* LEDGER LIST */
+.ledger-head {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  color: var(--ink);
+  border-bottom: 1px dashed var(--ink-soft);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+.entry-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 90px 100px 26px;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px dotted var(--paper-line);
+  font-size: 13px;
+}
+.entry-row .date { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 11px; }
+.entry-row .note { color: var(--charcoal); }
+.entry-row .badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  width: fit-content;
+}
+.badge.income { background: rgba(130,181,136,0.16); color: var(--sage); }
+.badge.expense { background: rgba(217,120,98,0.16); color: var(--brick); }
+.entry-row .amt { font-family: 'IBM Plex Mono', monospace; text-align: right; font-weight: 600; }
+.amt.income { color: var(--sage); }
+.amt.expense { color: var(--brick); }
+.entry-row .running { font-family: 'IBM Plex Mono', monospace; text-align: right; color: var(--ink-soft); font-size: 12px; }
+.del-btn {
+  background: none; border: none; cursor: pointer; color: var(--ink-soft);
+  font-size: 15px; line-height: 1; padding: 4px;
+}
+.del-btn:hover { color: var(--brick); }
+
+.empty {
+  text-align: center;
+  padding: 40px 10px;
+  color: var(--ink-soft);
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+}
+
+/* MODAL */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10; padding: 20px;
+}
+.modal {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal.wide { max-width: 480px; }
+.modal h2 {
+  font-family: 'Fraunces', serif;
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-size: 20px;
+}
+.modal .field { margin-bottom: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.btn-secondary {
+  flex: 1; padding: 10px; border-radius: 4px; border: 1px solid var(--ink);
+  background: transparent; color: var(--ink); font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; cursor: pointer; text-transform: uppercase;
+}
+.btn-primary {
+  flex: 1; padding: 10px; border-radius: 4px; border: none;
+  background: var(--ink); color: var(--paper); font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; cursor: pointer; text-transform: uppercase;
+}
+.reset-link {
+  display: block; text-align: center; margin-top: 14px; font-size: 11px;
+  color: var(--brick); cursor: pointer; text-decoration: underline;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.loading { text-align: center; padding: 60px 0; color: var(--ink-soft); font-family: 'Fraunces', serif; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loading">Opening the ledger…</div>
+</div>
+
+<script>
+const STORAGE_KEY = 'ledger-data-v1';
+let state = null;
+let pendingType = 'income';
+
+const defaultState = () => ({
+  startingBalance: 0,
+  goalName: 'Emergency Fund',
+  goalAmount: 5000,
+  goalTargetDate: '',
+  entries: [],
+  accounts: [],
+  recurring: []
+});
+
+const ACCOUNT_TYPES = ['401(k)', 'Roth IRA', 'Traditional IRA', 'HSA', 'CD', 'High-Yield Savings', 'Brokerage', 'Other'];
+
+function fmt(n) {
+  const sign = n < 0 ? '-' : '';
+  return sign + '$' + Math.abs(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+
+async function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state = raw ? JSON.parse(raw) : defaultState();
+    if (!state.accounts) state.accounts = [];
+    if (!state.recurring) state.recurring = [];
+    if (state.goalTargetDate === undefined) state.goalTargetDate = '';
+    catchUpRecurring();
+  } catch (e) {
+    state = defaultState();
+  }
+  render();
+}
+
+async function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Storage error', e);
+  }
+}
+
+function totals() {
+  let income = 0, expense = 0;
+  for (const e of state.entries) {
+    if (e.type === 'income') income += e.amount; else expense += e.amount;
+  }
+  const balance = state.startingBalance + income - expense;
+
+  let accountsTotal = 0, accountsCounted = 0;
+  for (const a of state.accounts) {
+    accountsTotal += a.balance;
+    if (a.countTowardGoal) accountsCounted += a.balance;
+  }
+  const towardGoal = balance + accountsCounted;
+
+  return { income, expense, balance, accountsTotal, accountsCounted, towardGoal };
+}
+
+function buildAccountsListHtml() {
+  return state.accounts.length ? state.accounts.map(a => `
+    <div class="acct-row">
+      <div class="acct-name">${escapeHtml(a.type)}</div>
+      <div class="acct-balance">
+        <span>$</span>
+        <input type="number" step="0.01" value="${a.balance}" onchange="updateAccountBalance('${a.id}', this.value)">
+      </div>
+      <label class="acct-check">
+        <input type="checkbox" ${a.countTowardGoal ? 'checked' : ''} onchange="toggleAccountGoal('${a.id}')">
+        Count toward goal
+      </label>
+      <button class="del-btn" onclick="removeAccount('${a.id}')" title="Remove account">✕</button>
+    </div>
+  `).join('') : '<div class="acct-empty">No accounts added yet.</div>';
+}
+
+function refreshAccountsModal() {
+  const list = document.getElementById('accounts-modal-list');
+  if (list) list.innerHTML = buildAccountsListHtml();
+}
+
+function openAccounts() {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal wide">
+      <h2>Other Accounts</h2>
+      <div class="accounts-sub">Add the ones you have, set a balance, and choose whether each counts toward your goal.</div>
+      <div class="chip-row">
+        ${ACCOUNT_TYPES.map(t => `<button class="chip" onclick="addAccount('${t}')">+ ${t}</button>`).join('')}
+      </div>
+      <div class="acct-list" id="accounts-modal-list">
+        ${buildAccountsListHtml()}
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="closeModal()">Done</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function addAccount(type) {
+  let label = type;
+  if (type === 'Other') {
+    label = (prompt('Name this account:') || '').trim();
+    if (!label) return;
+  }
+  state.accounts.push({
+    id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+    type: label,
+    balance: 0,
+    countTowardGoal: false
+  });
+  save();
+  render();
+  refreshAccountsModal();
+}
+
+function updateAccountBalance(id, value) {
+  const acct = state.accounts.find(a => a.id === id);
+  if (!acct) return;
+  acct.balance = parseFloat(value) || 0;
+  save();
+  render();
+  refreshAccountsModal();
+}
+
+function toggleAccountGoal(id) {
+  const acct = state.accounts.find(a => a.id === id);
+  if (!acct) return;
+  acct.countTowardGoal = !acct.countTowardGoal;
+  save();
+  render();
+  refreshAccountsModal();
+}
+
+function removeAccount(id) {
+  state.accounts = state.accounts.filter(a => a.id !== id);
+  save();
+  render();
+  refreshAccountsModal();
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
+function addMonthsToDate(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0,10);
+}
+
+function nextDateFor(dateStr, frequency) {
+  if (frequency === 'weekly') return addDays(dateStr, 7);
+  if (frequency === 'monthly') return addMonthsToDate(dateStr, 1);
+  return addDays(dateStr, 14); // biweekly
+}
+
+function catchUpRecurring() {
+  const today = todayStr();
+  let changed = false;
+  for (const r of state.recurring) {
+    let guard = 0;
+    while (r.nextDate <= today && guard < 104) {
+      state.entries.push({
+        id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+        type: r.type, amount: r.amount, note: r.note, date: r.nextDate
+      });
+      r.nextDate = nextDateFor(r.nextDate, r.frequency);
+      changed = true;
+      guard++;
+    }
+  }
+  if (changed) {
+    state.entries.sort((a,b) => a.date.localeCompare(b.date));
+    save();
+  }
+}
+
+function removeRecurring(id) {
+  state.recurring = state.recurring.filter(r => r.id !== id);
+  save();
+  render();
+}
+
+function addEntry(amount, note, date, type) {
+  state.entries.push({
+    id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+    type, amount, note: note || (type === 'income' ? 'Income' : 'Expense'), date
+  });
+  state.entries.sort((a,b) => a.date.localeCompare(b.date));
+  save();
+  render();
+}
+
+function deleteEntry(id) {
+  state.entries = state.entries.filter(e => e.id !== id);
+  save();
+  render();
+}
+
+function renderStamp(pct) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  const r = 52, circ = 2 * Math.PI * r;
+  const offset = circ - (clamped/100) * circ;
+  return `
+  <svg class="stamp" viewBox="0 0 140 140">
+    <circle class="ring-outer" cx="70" cy="70" r="64"/>
+    <circle class="ring-track" cx="70" cy="70" r="${r}"/>
+    <circle class="ring-progress" cx="70" cy="70" r="${r}"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+      transform="rotate(-90 70 70)"/>
+    <text x="70" y="68" text-anchor="middle" class="pct" font-size="24">${Math.round(clamped)}%</text>
+    <text x="70" y="86" text-anchor="middle" class="lbl" font-size="8">FUNDED</text>
+  </svg>`;
+}
+
+function entryRow(e, running) {
+  return `
+  <div class="entry-row">
+    <div class="date">${e.date}</div>
+    <div>
+      <div class="note">${escapeHtml(e.note)}</div>
+      <span class="badge ${e.type}">${e.type === 'income' ? 'Biweekly' : 'Weekly'}</span>
+    </div>
+    <div class="amt ${e.type}">${e.type === 'income' ? '+' : '−'}${fmt(e.amount)}</div>
+    <div class="running">${fmt(running)}</div>
+    <button class="del-btn" onclick="deleteEntry('${e.id}')" title="Delete entry">✕</button>
+  </div>`;
+}
+
+function recurringRow(r) {
+  return `
+  <div class="acct-row">
+    <div class="acct-name">${escapeHtml(r.note)} <span class="badge ${r.type}">${r.frequency}</span></div>
+    <div class="acct-balance" style="border:none;color:${r.type==='income' ? 'var(--sage)' : 'var(--brick)'}">${r.type === 'income' ? '+' : '−'}${fmt(r.amount)}</div>
+    <div style="font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace">Next: ${r.nextDate}</div>
+    <button class="del-btn" onclick="removeRecurring('${r.id}')" title="Stop recurring">✕</button>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function render() {
+  const { income, expense, balance, accountsTotal, accountsCounted, towardGoal } = totals();
+  const pct = state.goalAmount > 0 ? (towardGoal / state.goalAmount) * 100 : 0;
+  const remaining = Math.max(0, state.goalAmount - towardGoal);
+
+  // pace calculator metrics
+  let avgWeeklyNet = null;
+  if (state.entries.length) {
+    const dates = state.entries.map(e => e.date).sort();
+    const first = new Date(dates[0] + 'T00:00:00');
+    const now = new Date(todayStr() + 'T00:00:00');
+    const daysElapsed = Math.max(1, (now - first) / 86400000);
+    const weeksElapsed = Math.max(daysElapsed / 7, 1 / 7);
+    avgWeeklyNet = (income - expense) / weeksElapsed;
+  }
+  let requiredWeekly = null;
+  if (state.goalTargetDate) {
+    const target = new Date(state.goalTargetDate + 'T00:00:00');
+    const now = new Date(todayStr() + 'T00:00:00');
+    const weeksLeft = (target - now) / 86400000 / 7;
+    requiredWeekly = weeksLeft > 0 ? remaining / weeksLeft : remaining;
+  }
+  let projectedDateStr = null;
+  if (avgWeeklyNet && avgWeeklyNet > 0 && remaining > 0) {
+    const weeksToGo = remaining / avgWeeklyNet;
+    const d = new Date(todayStr() + 'T00:00:00');
+    d.setDate(d.getDate() + Math.ceil(weeksToGo * 7));
+    projectedDateStr = d.toISOString().slice(0,10);
+  }
+  const onTrack = requiredWeekly !== null && avgWeeklyNet !== null && avgWeeklyNet >= requiredWeekly;
+
+  // running balance list, oldest first for calc, displayed newest first
+  let running = state.startingBalance;
+  const withRunning = state.entries.map(e => {
+    running += e.type === 'income' ? e.amount : -e.amount;
+    return { ...e, running };
+  });
+  const displayEntries = [...withRunning].reverse();
+
+  const rowsHtml = displayEntries.length
+    ? displayEntries.map(e => entryRow(e, e.running)).join('')
+    : `<div class="empty">No entries yet. Add your first income or expense below.</div>`;
+
+  document.getElementById('app').innerHTML = `
+    <div class="masthead">
+      <div>
+        <h1>Ledger</h1>
+        <div class="sub">Savings &amp; Goal Tracker</div>
+      </div>
+      <div class="masthead-actions">
+        <button class="settings-btn" onclick="openAccounts()">Accounts</button>
+        <button class="settings-btn" onclick="openSettings()">Edit Goal</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="stamp-holder">${renderStamp(pct)}</div>
+      <div class="figures">
+        <div class="goal-line">Working toward <b>${escapeHtml(state.goalName)}</b> — ${fmt(state.goalAmount)}</div>
+        <div class="stat-row">
+          <div class="stat bal"><span class="num">${fmt(balance)}</span><span class="cap">Current Balance</span></div>
+          <div class="stat pos"><span class="num">${fmt(income)}</span><span class="cap">Total Income</span></div>
+          <div class="stat neg"><span class="num">${fmt(expense)}</span><span class="cap">Total Spent</span></div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><span class="num" style="color:var(--ink)">${fmt(accountsTotal)}</span><span class="cap">Other Accounts</span></div>
+          <div class="stat"><span class="num" style="color:var(--brass-deep)">${fmt(remaining)}</span><span class="cap">Remaining to Goal</span></div>
+        </div>
+        ${accountsCounted > 0 ? `<div class="goal-line" style="font-size:12px; color:var(--ink-soft)">Includes ${fmt(accountsCounted)} counted from other accounts</div>` : ''}
+      </div>
+    </div>
+
+    <div class="entry-card">
+      <div class="type-toggle">
+        <button class="income ${pendingType==='income'?'active':''}" onclick="setType('income')">Income</button>
+        <button class="expense ${pendingType==='expense'?'active':''}" onclick="setType('expense')">Expense</button>
+        <button class="pace ${pendingType==='pace'?'active':''}" onclick="setType('pace')">Goal Pace</button>
+      </div>
+      ${pendingType === 'pace' ? `
+      <div class="pace-panel">
+        ${remaining <= 0 ? `
+          <div class="pace-status good">🎉 You've reached ${fmt(state.goalAmount)} toward <b>${escapeHtml(state.goalName)}</b>.</div>
+        ` : `
+          <div class="pace-grid">
+            <div class="pace-stat"><span class="num">${avgWeeklyNet !== null ? fmt(avgWeeklyNet) : '—'}</span><span class="cap">Your Avg / Week</span></div>
+            <div class="pace-stat"><span class="num">${requiredWeekly !== null ? fmt(requiredWeekly) : '—'}</span><span class="cap">Needed / Week</span></div>
+            <div class="pace-stat"><span class="num" style="color:var(--brass-deep)">${fmt(remaining)}</span><span class="cap">Left to Goal</span></div>
+          </div>
+          ${!state.goalTargetDate
+            ? `<div class="pace-note">Set a target date in <button class="link-btn" onclick="openSettings()">Edit Goal</button> to see whether you're on pace.</div>`
+            : `<div class="pace-status ${onTrack ? 'good' : 'bad'}">
+                ${onTrack
+                  ? `✅ On pace — keep averaging about ${fmt(avgWeeklyNet)}/week and you'll reach your goal by ${state.goalTargetDate}.`
+                  : `⚠️ Behind pace — you'd need about ${fmt(requiredWeekly)}/week to hit your goal by ${state.goalTargetDate}. You're currently averaging ${avgWeeklyNet !== null ? fmt(avgWeeklyNet) : '$0.00'}/week.`
+                }
+              </div>`
+          }
+          ${projectedDateStr ? `<div class="pace-note">At your current pace, you're on track to reach your goal around <b>${projectedDateStr}</b>.</div>` : ''}
+        `}
+      </div>
+      ` : `
+      <div class="form-row">
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="amt-input" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="date-input" value="${todayStr()}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field" style="flex:1 1 100%">
+          <label>Note (optional)</label>
+          <input type="text" id="note-input" placeholder="${pendingType==='income' ? 'e.g. Paycheck' : 'e.g. Car payment'}">
+        </div>
+      </div>
+      <label class="recur-row">
+        <input type="checkbox" id="recurring-check" onchange="toggleRecurringFields()">
+        Make this recurring (e.g. car payment, fixed salary)
+      </label>
+      <div class="form-row" id="recurring-freq-row" style="display:none;">
+        <div class="field">
+          <label>Repeats</label>
+          <select id="freq-input">
+            <option value="weekly">Weekly</option>
+            <option value="biweekly" selected>Biweekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+      </div>
+      <button class="add-btn" onclick="submitEntry()">Add ${pendingType === 'income' ? 'Income' : 'Expense'}</button>
+      `}
+    </div>
+
+    ${state.recurring.length ? `
+    <div class="accounts-card">
+      <h3>Recurring</h3>
+      <div class="accounts-sub">Posted automatically on schedule — stop one anytime with ✕.</div>
+      <div class="acct-list">
+        ${state.recurring.map(r => recurringRow(r)).join('')}
+      </div>
+    </div>
+    ` : ''}
+
+    <div class="accounts-card">
+      <h3>Other Accounts</h3>
+      <div class="accounts-sub">Retirement, CDs, and other balances outside your ledger. Manage them from the "Accounts" button up top.</div>
+      ${state.accounts.length
+        ? `<div class="stat-row" style="gap:22px;">
+             <div class="stat"><span class="num" style="color:var(--ink)">${fmt(accountsTotal)}</span><span class="cap">${state.accounts.length} Account${state.accounts.length===1?'':'s'} Tracked</span></div>
+             <div class="stat"><span class="num" style="color:var(--sage)">${fmt(accountsCounted)}</span><span class="cap">Counted Toward Goal</span></div>
+           </div>`
+        : '<div class="acct-empty">No accounts added yet — tap Accounts above to add one.</div>'
+      }
+    </div>
+
+    <div class="ledger-head">
+      <span>Entry</span>
+      <span>Running Balance</span>
+    </div>
+    ${rowsHtml}
+
+    <span class="reset-link" onclick="openReset()">Reset all data</span>
+  `;
+}
+
+function setType(t) {
+  pendingType = t;
+  render();
+  const amtEl = document.getElementById('amt-input');
+  if (amtEl) amtEl.focus();
+}
+
+function toggleRecurringFields() {
+  const row = document.getElementById('recurring-freq-row');
+  const checked = document.getElementById('recurring-check').checked;
+  row.style.display = checked ? 'flex' : 'none';
+}
+
+function submitEntry() {
+  const amtEl = document.getElementById('amt-input');
+  const dateEl = document.getElementById('date-input');
+  const noteEl = document.getElementById('note-input');
+  const recurEl = document.getElementById('recurring-check');
+  const freqEl = document.getElementById('freq-input');
+  const amount = parseFloat(amtEl.value);
+  if (!amount || amount <= 0) {
+    amtEl.focus();
+    amtEl.style.outline = '2px solid var(--brick)';
+    return;
+  }
+  const date = dateEl.value || todayStr();
+  const note = noteEl.value.trim();
+  addEntry(amount, note, date, pendingType);
+
+  if (recurEl && recurEl.checked) {
+    const frequency = freqEl ? freqEl.value : 'biweekly';
+    state.recurring.push({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      type: pendingType,
+      amount,
+      note: note || (pendingType === 'income' ? 'Income' : 'Expense'),
+      frequency,
+      nextDate: nextDateFor(date, frequency)
+    });
+    save();
+    render();
+  }
+}
+
+function openSettings() {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Edit Goal</h2>
+      <div class="field">
+        <label>Goal name</label>
+        <input type="text" id="s-name" value="${escapeHtml(state.goalName)}">
+      </div>
+      <div class="field">
+        <label>Goal amount</label>
+        <input type="number" id="s-amount" value="${state.goalAmount}" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Target date (optional)</label>
+        <input type="date" id="s-target" value="${state.goalTargetDate || ''}">
+      </div>
+      <div class="field">
+        <label>Starting balance (before your first entry)</label>
+        <input type="number" id="s-start" value="${state.startingBalance}" step="0.01">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function saveSettings() {
+  const name = document.getElementById('s-name').value.trim();
+  const amount = parseFloat(document.getElementById('s-amount').value) || 0;
+  const target = document.getElementById('s-target').value || '';
+  const start = parseFloat(document.getElementById('s-start').value) || 0;
+  state.goalName = name || 'Savings Goal';
+  state.goalAmount = amount;
+  state.goalTargetDate = target;
+  state.startingBalance = start;
+  save();
+  closeModal();
+  render();
+}
+
+function openReset() {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Reset all data?</h2>
+      <p style="font-size:13px;color:var(--ink-soft)">This clears every entry and resets your goal. This can't be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" style="background:var(--brick)" onclick="confirmReset()">Reset</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function confirmReset() {
+  state = defaultState();
+  save();
+  closeModal();
+  render();
+}
+
+function closeModal() {
+  const o = document.querySelector('.overlay');
+  if (o) o.remove();
+}
+
+load();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.log('SW registration skipped:', e));
+  });
+}
+
+</script>
+</body>
+</html>
